@@ -119,9 +119,39 @@ async function fetchGoldEur(fromYear = 2014) {
   return goldMap;
 }
 
+// ── Estonian HICP from ECB SDMX API ──────────────────────────────────────────
+// Free, no API key. Returns monthly CPI index (2015=100) for Estonia.
+
+async function fetchHICP(fromYear = 2014) {
+  const url = `https://data-api.ecb.europa.eu/service/data/ICP/M.EE.N.000000.4.INX?format=csvdata&startPeriod=${fromYear}-01`;
+  console.log('Fetching Estonian HICP from ECB SDMX API...');
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`ECB API HTTP ${res.status}`);
+  const text = await res.text();
+
+  // Parse CSV: find TIME_PERIOD and OBS_VALUE column indices from header
+  const lines = text.trim().split('\n');
+  const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const timeIdx = header.indexOf('TIME_PERIOD');
+  const valIdx  = header.indexOf('OBS_VALUE');
+  if (timeIdx < 0 || valIdx < 0) throw new Error(`ECB CSV missing expected columns: ${header.join(',')}`);
+
+  const hicpMap = {};
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    const month = cols[timeIdx];   // e.g. "2014-01"
+    const val   = parseFloat(cols[valIdx]);
+    if (!month || isNaN(val)) continue;
+    hicpMap[month] = val;
+  }
+  console.log(`HICP: ${Object.keys(hicpMap).length} months parsed`);
+  return hicpMap;
+}
+
 // ── Merge ─────────────────────────────────────────────────────────────────────
 
-function mergeData(kvMap, goldMap, slug) {
+function mergeData(kvMap, goldMap, hicpMap, slug) {
   // Normalize kv "MM.YYYY" → "YYYY-MM"
   const kvNorm = {};
   for (const [label, price] of Object.entries(kvMap)) {
@@ -136,7 +166,10 @@ function mergeData(kvMap, goldMap, slug) {
     const kesklinn = kvNorm[month];
     const gold = goldMap[month];
     if (kesklinn == null || gold == null) continue;
-    data.push({ month, kesklinn: Math.round(kesklinn * 10) / 10, gold: Math.round(gold * 100) / 100 });
+    const row = { month, kesklinn: Math.round(kesklinn * 10) / 10, gold: Math.round(gold * 100) / 100 };
+    const cpi = hicpMap[month];
+    if (cpi != null) row.cpi = Math.round(cpi * 100) / 100;
+    data.push(row);
   }
   console.log(`[${slug}] Merged ${data.length} months`);
   return data;
@@ -145,9 +178,10 @@ function mergeData(kvMap, goldMap, slug) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  // Fetch gold once, scrape all cities in parallel
-  const [goldMap, ...kvMaps] = await Promise.all([
+  // Fetch gold + HICP once, scrape all cities in parallel
+  const [goldMap, hicpMap, ...kvMaps] = await Promise.all([
     fetchGoldEur(2014),
+    fetchHICP(2014),
     ...CITIES.map(c => scrapeKvee(c)),
   ]);
 
@@ -158,10 +192,17 @@ async function main() {
   fs.writeFileSync('gold.json', JSON.stringify(goldData, null, 2));
   console.log(`Written ${goldData.length} months to gold.json`);
 
+  // Write cpi-estonia.json (standalone)
+  const cpiData = Object.entries(hicpMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, cpi]) => ({ month, cpi: Math.round(cpi * 100) / 100 }));
+  fs.writeFileSync('cpi-estonia.json', JSON.stringify(cpiData, null, 2));
+  console.log(`Written ${cpiData.length} months to cpi-estonia.json`);
+
   // Write per-city JSON files
   for (let i = 0; i < CITIES.length; i++) {
     const { slug } = CITIES[i];
-    const data = mergeData(kvMaps[i], goldMap, slug);
+    const data = mergeData(kvMaps[i], goldMap, hicpMap, slug);
     fs.writeFileSync(`${slug}.json`, JSON.stringify(data, null, 2));
     console.log(`Written ${data.length} months to ${slug}.json`);
   }

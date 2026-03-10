@@ -33,6 +33,7 @@ jobs:
             set ssl:verify-certificate false;
             open -u '${{ secrets.FTP_USER }},${{ secrets.FTP_PASSWORD }}' ftp://${{ secrets.FTP_HOST }};
             put -O / gold.json;
+            put -O / cpi-estonia.json;
             put -O / tallinn-kesklinn.json;
             put -O / tartu-kesklinn.json;
             put -O / index.html;

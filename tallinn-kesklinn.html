@@ -67,6 +67,33 @@
     Apartment data: <a href="https://www.kv.ee/hinnastatistika" target="_blank" rel="noopener noreferrer">kv.ee</a> (asking prices) · Gold: EUR/oz monthly avg (World Gold Council)
   </div>
 
+  <div class="eur-chart-section">
+    <h2 class="eur-chart-title">Real Value — Priced in EUR <span class="eur-chart-badge">Inflation-adjusted · 2014 base · HICP Estonia</span></h2>
+    <div class="stats-row">
+      <div class="stat-card" style="border-left-color: var(--text-faint);">
+        <div class="stat-header">
+          <span class="stat-dot" style="background: var(--text-faint);"></span>
+          <span class="stat-label">Nominal €/m²</span>
+        </div>
+        <span class="stat-value" id="nom-price">—</span>
+        <span class="stat-detail" id="nom-date"></span>
+      </div>
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-dot"></span>
+          <span class="stat-label">Real €/m² (2014 €)</span>
+        </div>
+        <span class="stat-value" id="real-price">—</span>
+        <span class="stat-detail" id="real-date"></span>
+        <span class="stat-change" id="real-change"></span>
+      </div>
+    </div>
+    <div id="eur-chart-container"></div>
+    <div class="source-note">
+      Nominal prices deflated by Estonian HICP (all items, 2015=100) · Source: <a href="https://data.ecb.europa.eu" target="_blank" rel="noopener noreferrer">ECB</a>
+    </div>
+  </div>
+
   <div class="promo-section">
     <div class="promo-label">From the author · <a href="https://teemusk.com" target="_blank" rel="noopener noreferrer" style="color:var(--text-faint);text-decoration:none;">teemusk.com</a></div>
     <div class="promo-cards">
