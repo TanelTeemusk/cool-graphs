@@ -17,173 +17,15 @@ function initDashboard(config) {
 
   // ── Build ratio from API JSON ──────────────────────────────────────────────
   function buildAllRatioFromApi(apiData) {
-    const cpiBase = apiData[0]?.cpi;
-    return apiData.map(({ month, kesklinn, gold, cpi }) => {
+    return apiData.map(({ month, kesklinn, gold }) => {
       const [yyyy, mm] = month.split('-');
-      const row = {
+      return {
         time: { year: parseInt(yyyy), month: parseInt(mm), day: 1 },
         value: parseFloat((kesklinn / gold).toFixed(4)),
         kesklinn,
         gold,
       };
-      if (cpi != null && cpiBase != null) {
-        row.cpi = cpi;
-        row.real = parseFloat((kesklinn / (cpi / cpiBase)).toFixed(1));
-      }
-      return row;
     });
-  }
-
-  // ── EUR chart init ─────────────────────────────────────────────────────────
-  let eurChartSetRange = null;  // will be set by initEurChart if CPI data exists
-
-  function initEurChart(allData) {
-    const container = document.getElementById('eur-chart-container');
-    if (!container) return;
-
-    const chart = LightweightCharts.createChart(container, {
-      width: container.clientWidth,
-      height: container.clientHeight,
-      layout: {
-        background: { type: 'solid', color: '#1a1a1a' },
-        textColor: '#8a8a88',
-        fontFamily: "'DM Sans', sans-serif",
-        fontSize: 12,
-      },
-      grid: {
-        vertLines: { color: '#222' },
-        horzLines: { color: '#222' },
-      },
-      crosshair: {
-        mode: LightweightCharts.CrosshairMode.Normal,
-        vertLine: { width: 1, color: 'rgba(255,255,255,0.15)', labelBackgroundColor: '#333' },
-        horzLine: { width: 1, color: 'rgba(232,175,52,0.3)', labelBackgroundColor: '#333' },
-      },
-      rightPriceScale: {
-        borderColor: '#2a2a2a',
-        scaleMargins: { top: 0.08, bottom: 0.06 },
-        visible: true,
-      },
-      timeScale: {
-        borderColor: '#2a2a2a',
-        timeVisible: false,
-        rightOffset: 5,
-        barSpacing: 8,
-        tickMarkFormatter: (time) => {
-          const d = new Date(time.year, time.month - 1);
-          return d.toLocaleDateString('en', { month: 'short', year: '2-digit' });
-        },
-      },
-      handleScroll: { mouseWheel: true, pressedMouseMove: true },
-      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
-    });
-
-    const nomSeries = chart.addLineSeries({
-      color: '#555',
-      lineWidth: 2,
-      crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 4,
-      crosshairMarkerBorderColor: '#555',
-      crosshairMarkerBackgroundColor: '#1a1a1a',
-      crosshairMarkerBorderWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      priceFormat: {
-        type: 'custom',
-        formatter: (p) => '€' + Math.round(p).toLocaleString(),
-      },
-    });
-
-    const realSeries = chart.addLineSeries({
-      color: '#e8af34',
-      lineWidth: 2,
-      crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 4,
-      crosshairMarkerBorderColor: '#e8af34',
-      crosshairMarkerBackgroundColor: '#1a1a1a',
-      crosshairMarkerBorderWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      priceFormat: {
-        type: 'custom',
-        formatter: (p) => '€' + Math.round(p).toLocaleString(),
-      },
-    });
-
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    function formatMonth(time) {
-      if (typeof time === 'object' && time.year) return monthNames[time.month - 1] + ' ' + time.year;
-      return '';
-    }
-    function fmtEur(v) { return '€' + Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
-    function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(1) + '%'; }
-
-    function updateEurStats(data) {
-      const last = data[data.length - 1];
-      const first = data[0];
-      const nomEl = document.getElementById('nom-price');
-      const nomDateEl = document.getElementById('nom-date');
-      const realEl = document.getElementById('real-price');
-      const realDateEl = document.getElementById('real-date');
-      const realChangeEl = document.getElementById('real-change');
-      if (nomEl) nomEl.textContent = fmtEur(last.kesklinn);
-      if (nomDateEl) nomDateEl.textContent = formatMonth(last.time);
-      if (realEl) realEl.textContent = fmtEur(last.real);
-      if (realDateEl) realDateEl.textContent = formatMonth(last.time);
-      if (realChangeEl) {
-        const pct = ((last.real / first.real) - 1) * 100;
-        realChangeEl.textContent = fmtPct(pct);
-        realChangeEl.className = 'stat-change ' + (pct >= 0 ? 'positive' : 'negative');
-      }
-    }
-
-    function setEurData(data) {
-      nomSeries.setData(data.map(d => ({ time: d.time, value: d.kesklinn })));
-      realSeries.setData(data.map(d => ({ time: d.time, value: d.real })));
-      chart.timeScale().fitContent();
-      updateEurStats(data);
-    }
-
-    setEurData(allData);
-
-    chart.subscribeCrosshairMove((param) => {
-      if (!param.time || !param.seriesData.size) {
-        updateEurStats(allData);
-        return;
-      }
-      const nomVal = param.seriesData.get(nomSeries);
-      const realVal = param.seriesData.get(realSeries);
-      if (nomVal || realVal) {
-        const nomEl = document.getElementById('nom-price');
-        const nomDateEl = document.getElementById('nom-date');
-        const realEl = document.getElementById('real-price');
-        const realDateEl = document.getElementById('real-date');
-        const realChangeEl = document.getElementById('real-change');
-        if (nomEl && nomVal) nomEl.textContent = fmtEur(nomVal.value);
-        if (nomDateEl) nomDateEl.textContent = formatMonth(param.time);
-        if (realEl && realVal) realEl.textContent = fmtEur(realVal.value);
-        if (realDateEl) realDateEl.textContent = formatMonth(param.time);
-        if (realChangeEl && realVal) {
-          const activeRange = document.querySelector('.range-btn.active');
-          const months = parseInt(activeRange.dataset.range);
-          const rangeData = months === 0 ? allData : allData.slice(-months);
-          const pct = ((realVal.value / rangeData[0].real) - 1) * 100;
-          realChangeEl.textContent = fmtPct(pct);
-          realChangeEl.className = 'stat-change ' + (pct >= 0 ? 'positive' : 'negative');
-        }
-      }
-    });
-
-    new ResizeObserver(entries => {
-      for (const entry of entries) {
-        chart.applyOptions({ width: entry.contentRect.width, height: entry.contentRect.height });
-      }
-    }).observe(container);
-
-    eurChartSetRange = (months) => {
-      const data = months === 0 ? allData : allData.slice(-months);
-      setEurData(data);
-    };
   }
 
   // ── Chart init ─────────────────────────────────────────────────────────────
@@ -326,7 +168,6 @@ function initDashboard(config) {
         btn.classList.add('active');
         const months = parseInt(btn.dataset.range);
         setRange(months);
-        if (eurChartSetRange) eurChartSetRange(months);
         updateSummary(months);
       });
     });
@@ -371,13 +212,10 @@ function initDashboard(config) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (!Array.isArray(data) || !data.length) throw new Error('empty');
-      const allRatio = buildAllRatioFromApi(data);
-      initChart(allRatio);
-      if (allRatio[0]?.cpi != null) initEurChart(allRatio);
+      initChart(buildAllRatioFromApi(data));
     } catch {
       if (fallbackData && fallbackData.length) {
         initChart(fallbackData);
-        // fallback data has no CPI — EUR chart not shown
       }
     }
   }
