@@ -24,20 +24,15 @@ jobs:
       - name: Run scraper
         run: node scraper.js
 
-      - name: Deploy to Zone.ee via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          security: strict
-          local-dir: ./
-          server-dir: /
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            .claude/**
-            package*.json
-            scraper.js
-            README.md
+      - name: Deploy to Zone.ee via FTPS
+        run: |
+          sudo apt-get install -y lftp
+          lftp -c "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ssl:verify-certificate false;
+            open -u '${{ secrets.FTP_USER }},${{ secrets.FTP_PASSWORD }}' ftp://${{ secrets.FTP_HOST }};
+            put -O / tallinn-kesklinn.json;
+            put -O / index.html;
+            quit
+          "
