@@ -4,20 +4,44 @@
 const fs = require('fs');
 const { chromium } = require('playwright');
 
+// ── City configs ───────────────────────────────────────────────────────────────
+// To add a new city: append an entry with the kv.ee URL params and output slug.
+
+const CITIES = [
+  {
+    slug: 'tallinn-kesklinn',
+    county: 1,
+    parish: 1061,
+    city: 1003,
+    startYear: 2014,
+    startMonth: 1,
+  },
+  {
+    slug: 'tartu-kesklinn',
+    county: 12,
+    parish: 1063,
+    city: 5705,
+    startYear: 2014,
+    startMonth: 1,
+  },
+];
+
 // ── kv.ee scraper via Playwright ──────────────────────────────────────────────
 
-async function scrapeKvee() {
+async function scrapeKvee(cityConfig) {
   const now = new Date();
   const endYear = now.getUTCFullYear();
   const endMonth = now.getUTCMonth() + 1;
 
+  const { county, parish, city, startYear, startMonth, slug } = cityConfig;
+
   const url =
     `https://www.kv.ee/hinnastatistika?graph_version=2&deal_type=1` +
-    `&start_year=2014&start_month=1` +
+    `&start_year=${startYear}&start_month=${startMonth}` +
     `&end_year=${endYear}&end_month=${endMonth}` +
-    `&stat_type=1&county1=1&parish1=1061&city1=1003`;
+    `&stat_type=1&county1=${county}&parish1=${parish}&city1=${city}`;
 
-  console.log('Scraping kv.ee:', url);
+  console.log(`[${slug}] Scraping kv.ee: ${url}`);
   const browser = await chromium.launch({ headless: true });
   try {
     const context = await browser.newContext({
@@ -52,7 +76,7 @@ async function scrapeKvee() {
       if (price == null || isNaN(price)) continue;
       map[labels[i]] = price;
     }
-    console.log(`kv.ee: ${Object.keys(map).length} months scraped`);
+    console.log(`[${slug}] kv.ee: ${Object.keys(map).length} months scraped`);
     return map;
   } finally {
     await browser.close();
@@ -61,10 +85,9 @@ async function scrapeKvee() {
 
 // ── Gold in EUR/oz from World Gold Council API ────────────────────────────────
 // Free, no API key. Returns daily prices; we average to monthly.
-// Endpoint: https://fsapi.gold.org/api/goldprice/v11/chart/price/eur/oz/{FROM_MS},{TO_MS}
 
-async function fetchGoldEur() {
-  const fromMs = new Date('2014-01-01').getTime();
+async function fetchGoldEur(fromYear = 2014) {
+  const fromMs = new Date(`${fromYear}-01-01`).getTime();
   const toMs   = Date.now();
 
   const url = `https://fsapi.gold.org/api/goldprice/v11/chart/price/eur/oz/${fromMs},${toMs}`;
@@ -98,7 +121,7 @@ async function fetchGoldEur() {
 
 // ── Merge ─────────────────────────────────────────────────────────────────────
 
-function mergeData(kvMap, goldMap) {
+function mergeData(kvMap, goldMap, slug) {
   // Normalize kv "MM.YYYY" → "YYYY-MM"
   const kvNorm = {};
   for (const [label, price] of Object.entries(kvMap)) {
@@ -106,7 +129,6 @@ function mergeData(kvMap, goldMap) {
     kvNorm[`${yyyy}-${mm.padStart(2, '0')}`] = price;
   }
 
-  // kv.ee is master timeline — sort months
   const months = Object.keys(kvNorm).sort();
 
   const data = [];
@@ -114,21 +136,35 @@ function mergeData(kvMap, goldMap) {
     const kesklinn = kvNorm[month];
     const gold = goldMap[month];
     if (kesklinn == null || gold == null) continue;
-    data.push({ month, kesklinn, gold });
+    data.push({ month, kesklinn: Math.round(kesklinn * 10) / 10, gold: Math.round(gold * 100) / 100 });
   }
+  console.log(`[${slug}] Merged ${data.length} months`);
   return data;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const [kvMap, goldMap] = await Promise.all([
-    scrapeKvee(),
-    fetchGoldEur(),
+  // Fetch gold once, scrape all cities in parallel
+  const [goldMap, ...kvMaps] = await Promise.all([
+    fetchGoldEur(2014),
+    ...CITIES.map(c => scrapeKvee(c)),
   ]);
-  const data = mergeData(kvMap, goldMap);
-  fs.writeFileSync('tallinn-kesklinn.json', JSON.stringify(data, null, 2));
-  console.log(`Written ${data.length} months to tallinn-kesklinn.json`);
+
+  // Write gold.json (standalone, for future use)
+  const goldData = Object.entries(goldMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, gold]) => ({ month, gold: Math.round(gold * 100) / 100 }));
+  fs.writeFileSync('gold.json', JSON.stringify(goldData, null, 2));
+  console.log(`Written ${goldData.length} months to gold.json`);
+
+  // Write per-city JSON files
+  for (let i = 0; i < CITIES.length; i++) {
+    const { slug } = CITIES[i];
+    const data = mergeData(kvMaps[i], goldMap, slug);
+    fs.writeFileSync(`${slug}.json`, JSON.stringify(data, null, 2));
+    console.log(`Written ${data.length} months to ${slug}.json`);
+  }
 }
 
 main().catch((err) => {

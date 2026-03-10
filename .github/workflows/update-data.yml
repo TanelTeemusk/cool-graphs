@@ -32,7 +32,13 @@ jobs:
             set ftp:ssl-protect-data true;
             set ssl:verify-certificate false;
             open -u '${{ secrets.FTP_USER }},${{ secrets.FTP_PASSWORD }}' ftp://${{ secrets.FTP_HOST }};
+            put -O / gold.json;
             put -O / tallinn-kesklinn.json;
+            put -O / tartu-kesklinn.json;
             put -O / index.html;
+            put -O / tallinn-kesklinn.html;
+            put -O / tartu-kesklinn.html;
+            put -O / style.css;
+            put -O / dashboard.js;
             quit
           "

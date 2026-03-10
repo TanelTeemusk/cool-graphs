@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tartu Kesklinn Real Value — Priced in Gold</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <nav class="site-nav">
+    <a href="index.html" class="nav-btn">← All cities</a>
+    <a href="tallinn-kesklinn.html" class="nav-btn">Tallinn Center</a>
+    <a href="tartu-kesklinn.html" class="nav-btn active">Tartu Center</a>
+  </nav>
+
+  <header>
+    <h1>Tartu Kesklinn Real Value — Priced in Gold</h1>
+    <div class="subtitle">Loading…</div>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-dot"></span>
+        <span class="stat-label">oz gold / m²</span>
+      </div>
+      <span class="stat-value" id="r-price">—</span>
+      <span class="stat-detail" id="r-date"></span>
+      <span class="stat-change" id="r-change"></span>
+    </div>
+    <div class="stat-card" style="border-left-color: var(--text-faint);">
+      <div class="stat-header">
+        <span class="stat-dot" style="background: var(--text-faint);"></span>
+        <span class="stat-label" id="city-label">Tartu Kesklinn €/m²</span>
+      </div>
+      <span class="stat-value" id="k-price">—</span>
+      <span class="stat-detail" id="k-date"></span>
+    </div>
+    <div class="stat-card" style="border-left-color: var(--text-faint);">
+      <div class="stat-header">
+        <span class="stat-dot" style="background: var(--text-faint);"></span>
+        <span class="stat-label">Gold €/oz</span>
+      </div>
+      <span class="stat-value" id="g-price">—</span>
+      <span class="stat-detail" id="g-date"></span>
+    </div>
+  </div>
+
+  <div class="range-buttons">
+    <button class="range-btn" data-range="12">1Y</button>
+    <button class="range-btn" data-range="36">3Y</button>
+    <button class="range-btn" data-range="60">5Y</button>
+    <button class="range-btn active" data-range="0">All</button>
+  </div>
+
+  <div id="chart-container"></div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="source-note">
+    Apartment data: <a href="https://www.kv.ee/hinnastatistika" target="_blank" rel="noopener noreferrer">kv.ee</a> (asking prices) · Gold: EUR/oz monthly avg (World Gold Council)
+  </div>
+
+  <div class="promo-section">
+    <div class="promo-label">From the author · <a href="https://teemusk.com" target="_blank" rel="noopener noreferrer" style="color:var(--text-faint);text-decoration:none;">teemusk.com</a></div>
+    <div class="promo-cards">
+      <a class="promo-card" href="https://teemusk.com/how-ai-made-media-is-numbing-the-world/" target="_blank" rel="noopener noreferrer">
+        <div class="promo-card-meta">AI · Feb 2026</div>
+        <div class="promo-card-title">How AI-Made Media Is Numbing the World</div>
+        <div class="promo-card-desc">The content explosion is underway — and we're adapting without noticing.</div>
+      </a>
+      <a class="promo-card" href="https://teemusk.com/what-is-mcp-and-why-should-you-care/" target="_blank" rel="noopener noreferrer">
+        <div class="promo-card-meta">AI · Jan 2026</div>
+        <div class="promo-card-title">What is MCP and Why Should You Care?</div>
+        <div class="promo-card-desc">REST APIs aren't enough for AI assistants. MCP adds the context LLMs need.</div>
+      </a>
+      <a class="promo-card" href="https://teemusk.com/company-megabrain/" target="_blank" rel="noopener noreferrer">
+        <div class="promo-card-meta">AI · Feb 2026</div>
+        <div class="promo-card-title">Your Business Megabrain</div>
+        <div class="promo-card-desc">What if an AI could understand everything your business has ever produced?</div>
+      </a>
+    </div>
+    <a class="promo-cta" href="https://teemusk.com/blog/" target="_blank" rel="noopener noreferrer">More on AI &amp; software development →</a>
+  </div>
+
+</div>
+
+<footer>
+  Built by <a href="https://teemusk.com" target="_blank" rel="noopener noreferrer">Tanel Teemusk</a> · <a href="mailto:tanel@teemusk.com">tanel@teemusk.com</a>
+</footer>
+
+<script src="dashboard.js"></script>
+<script>
+// Summaries will be updated once Tartu data is available from the scraper.
+initDashboard({
+  dataUrl: 'tartu-kesklinn.json',
+  cityLabel: 'Tartu Kesklinn',
+  summaries: {
+    0: 'Tartu Kesklinn data covers the full available history. Like Tallinn, the gold-adjusted value has declined significantly as gold prices have risen far faster than nominal apartment prices.',
+    12: 'Over the past year, gold\'s surge has outpaced any nominal price growth in Tartu Kesklinn, eroding real purchasing power.',
+    36: 'Over three years, the real cost of a Tartu Kesklinn square metre has fallen substantially as gold outperformed the local property market.',
+    60: 'Five-year view: Tartu Kesklinn prices have risen in EUR terms, but gold\'s performance has been stronger, reducing the oz/m² ratio.',
+  },
+  fallbackData: null,
+});
+</script>
+</body>
+</html>
