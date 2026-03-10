@@ -13,7 +13,7 @@ const CITIES = [
     county: 1,
     parish: 1061,
     city: 1003,
-    startYear: 2014,
+    startYear: 2000,
     startMonth: 1,
   },
   {
@@ -21,7 +21,7 @@ const CITIES = [
     county: 12,
     parish: 1063,
     city: 5705,
-    startYear: 2014,
+    startYear: 2000,
     startMonth: 1,
   },
 ];
@@ -147,7 +147,7 @@ function mergeData(kvMap, goldMap, slug) {
 async function main() {
   // Fetch gold once, scrape all cities in parallel
   const [goldMap, ...kvMaps] = await Promise.all([
-    fetchGoldEur(2014),
+    fetchGoldEur(2000),
     ...CITIES.map(c => scrapeKvee(c)),
   ]);
 

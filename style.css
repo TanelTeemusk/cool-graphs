@@ -351,6 +351,38 @@ footer {
 footer a { color: var(--text-muted); text-decoration: none; }
 footer a:hover { text-decoration: underline; }
 
+.range-sep {
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1;
+  align-self: center;
+}
+
+.range-year-input {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 400;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  width: 64px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  -moz-appearance: textfield;
+}
+
+.range-year-input::-webkit-outer-spin-button,
+.range-year-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.range-year-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 /* ── Mobile ────────────────────────────────────────────────────────────────── */
 
 @media (max-width: 600px) {

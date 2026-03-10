@@ -57,6 +57,10 @@
     <button class="range-btn" data-range="36">3Y</button>
     <button class="range-btn" data-range="60">5Y</button>
     <button class="range-btn active" data-range="0">All</button>
+    <span class="range-sep">·</span>
+    <input type="number" id="range-from" class="range-year-input" placeholder="From" min="2000" max="2099" step="1">
+    <span class="range-sep">—</span>
+    <input type="number" id="range-to" class="range-year-input" placeholder="To" min="2000" max="2099" step="1">
   </div>
 
   <div id="chart-container"></div>

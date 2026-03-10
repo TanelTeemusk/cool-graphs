@@ -143,7 +143,7 @@ function initDashboard(config) {
           document.getElementById('g-date').textContent = formatMonth(param.time);
 
           const activeRange = document.querySelector('.range-btn.active');
-          const months = parseInt(activeRange.dataset.range);
+          const months = activeRange ? parseInt(activeRange.dataset.range) : 0;
           const rangeData = months === 0 ? allRatio : allRatio.slice(-months);
           const firstVal = rangeData[0].value;
           const pct = ((val.value / firstVal) - 1) * 100;
@@ -162,10 +162,37 @@ function initDashboard(config) {
       updateStatsFromRange(data);
     }
 
+    const fromInput = document.getElementById('range-from');
+    const toInput   = document.getElementById('range-to');
+
+    function applyCustomRange() {
+      const fromYear = fromInput?.value ? parseInt(fromInput.value) : null;
+      const toYear   = toInput?.value   ? parseInt(toInput.value)   : null;
+      if (!fromYear && !toYear) return;
+
+      const data = allRatio.filter(d => {
+        if (fromYear && d.time.year < fromYear) return false;
+        if (toYear   && d.time.year > toYear)   return false;
+        return true;
+      });
+      if (!data.length) return;
+
+      document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+      ratioSeries.setData(data.map(d => ({ time: d.time, value: d.value })));
+      chart.timeScale().fitContent();
+      updateStatsFromRange(data);
+      updateSummary(-1);
+    }
+
+    if (fromInput) fromInput.addEventListener('change', applyCustomRange);
+    if (toInput)   toInput.addEventListener('change',   applyCustomRange);
+
     document.querySelectorAll('.range-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        if (fromInput) fromInput.value = '';
+        if (toInput)   toInput.value   = '';
         const months = parseInt(btn.dataset.range);
         setRange(months);
         updateSummary(months);
