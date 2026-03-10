@@ -419,11 +419,11 @@ function buildAllRatioFromHardcoded() {
 
 // ── Build allRatio from data.json ─────────────────────────────────────────────
 function buildAllRatioFromApi(apiData) {
-  return apiData.map(({ month, kesklinn, gold, eurusd }) => {
+  return apiData.map(({ month, kesklinn, gold }) => {
     const [yyyy, mm] = month.split('-');
     return {
       time: { year: parseInt(yyyy), month: parseInt(mm), day: 1 },
-      value: parseFloat(((kesklinn * eurusd) / gold).toFixed(4)),
+      value: parseFloat((kesklinn / gold).toFixed(4)),
       kesklinn,
       gold
     };

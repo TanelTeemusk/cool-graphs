@@ -3,7 +3,6 @@
 
 const fs = require('fs');
 const { chromium } = require('playwright');
-const unzipper = require('unzipper');
 
 // ── kv.ee scraper via Playwright ──────────────────────────────────────────────
 
@@ -60,11 +59,11 @@ async function scrapeKvee() {
   }
 }
 
-// ── Gold prices from Yahoo Finance ───────────────────────────────────────────
+// ── Gold in EUR from Yahoo Finance (XAUEUR=X) ─────────────────────────────────
 
-async function fetchGold() {
-  const url = 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=max&interval=1mo';
-  console.log('Fetching gold prices from Yahoo Finance...');
+async function fetchGoldEur() {
+  const url = 'https://query1.finance.yahoo.com/v8/finance/chart/XAUEUR=X?range=max&interval=1mo';
+  console.log('Fetching gold EUR prices from Yahoo Finance...');
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0' },
   });
@@ -83,65 +82,13 @@ async function fetchGold() {
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
     map[key] = close;
   }
-  console.log(`Gold: ${Object.keys(map).length} months fetched`);
-  return map;
-}
-
-// ── EUR/USD rates from ECB ZIP ────────────────────────────────────────────────
-
-async function fetchEurUsd() {
-  const url = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip';
-  console.log('Fetching EUR/USD from ECB ZIP...');
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`ECB HTTP ${res.status}`);
-
-  const buffer = Buffer.from(await res.arrayBuffer());
-
-  // Extract CSV from ZIP
-  const csvText = await new Promise((resolve, reject) => {
-    const chunks = [];
-    const stream = require('stream');
-    const readable = new stream.PassThrough();
-    readable.end(buffer);
-    readable
-      .pipe(unzipper.ParseOne(/eurofxref-hist\.csv/))
-      .on('data', (chunk) => chunks.push(chunk))
-      .on('finish', () => resolve(Buffer.concat(chunks).toString('utf8')))
-      .on('error', reject);
-  });
-
-  // Strip BOM if present, normalize line endings
-  const csvClean = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const lines = csvClean.trim().split('\n');
-  console.log('ECB CSV header:', JSON.stringify(lines[0].substring(0, 120)));
-  const headers = lines[0].split(',').map((h) => h.trim());
-  const dateIdx = headers.findIndex((h) => h === 'Date');
-  const usdIdx = headers.findIndex((h) => h === 'USD');
-  if (dateIdx < 0 || usdIdx < 0) throw new Error(`ECB CSV missing Date or USD column. Headers: ${JSON.stringify(headers.slice(0, 5))}`);
-
-  // Group daily rates by YYYY-MM, compute averages
-  const buckets = {}; // "YYYY-MM" → [rates]
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',').map((c) => c.trim());
-    if (!cols[dateIdx] || cols[usdIdx] === 'N/A' || !cols[usdIdx]) continue;
-    const rate = parseFloat(cols[usdIdx]);
-    if (isNaN(rate)) continue;
-    const ym = cols[dateIdx].substring(0, 7); // "YYYY-MM"
-    if (!buckets[ym]) buckets[ym] = [];
-    buckets[ym].push(rate);
-  }
-
-  const map = {};
-  for (const [ym, rates] of Object.entries(buckets)) {
-    map[ym] = rates.reduce((a, b) => a + b, 0) / rates.length;
-  }
-  console.log(`EUR/USD: ${Object.keys(map).length} months computed`);
+  console.log(`Gold EUR: ${Object.keys(map).length} months fetched`);
   return map;
 }
 
 // ── Merge ─────────────────────────────────────────────────────────────────────
 
-function mergeData(kvMap, goldMap, eurUsdMap) {
+function mergeData(kvMap, goldMap) {
   // Normalize kv "MM.YYYY" → "YYYY-MM"
   const kvNorm = {};
   for (const [label, price] of Object.entries(kvMap)) {
@@ -156,9 +103,8 @@ function mergeData(kvMap, goldMap, eurUsdMap) {
   for (const month of months) {
     const kesklinn = kvNorm[month];
     const gold = goldMap[month];
-    const eurusd = eurUsdMap[month];
-    if (kesklinn == null || gold == null || eurusd == null) continue;
-    data.push({ month, kesklinn, gold, eurusd });
+    if (kesklinn == null || gold == null) continue;
+    data.push({ month, kesklinn, gold });
   }
   return data;
 }
@@ -166,12 +112,11 @@ function mergeData(kvMap, goldMap, eurUsdMap) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const [kvMap, goldMap, eurUsdMap] = await Promise.all([
+  const [kvMap, goldMap] = await Promise.all([
     scrapeKvee(),
-    fetchGold(),
-    fetchEurUsd(),
+    fetchGoldEur(),
   ]);
-  const data = mergeData(kvMap, goldMap, eurUsdMap);
+  const data = mergeData(kvMap, goldMap);
   fs.writeFileSync('tallinn-kesklinn.json', JSON.stringify(data, null, 2));
   console.log(`Written ${data.length} months to tallinn-kesklinn.json`);
 }
