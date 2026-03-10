@@ -59,43 +59,41 @@ async function scrapeKvee() {
   }
 }
 
-// ── Gold in EUR from Metal Price API ─────────────────────────────────────────
-// Response: { rates: { "YYYY-MM-DD": { XAU: <oz per 1 EUR> } } }
-// Gold price EUR/oz = 1 / XAU rate
+// ── Gold in EUR/oz from World Gold Council API ────────────────────────────────
+// Free, no API key. Returns daily prices; we average to monthly.
+// Endpoint: https://fsapi.gold.org/api/goldprice/v11/chart/price/eur/oz/{FROM_MS},{TO_MS}
 
 async function fetchGoldEur() {
-  const apiKey = process.env.METAL_API_KEY;
-  if (!apiKey) throw new Error('Missing METAL_API_KEY environment variable');
+  const fromMs = new Date('2014-01-01').getTime();
+  const toMs   = Date.now();
 
-  const startDate = '2014-01-01';
-  const now = new Date();
-  const endDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
-
-  const url = `https://api.metalpriceapi.com/v1/timeframe?api_key=${apiKey}&start_date=${startDate}&end_date=${endDate}&base=EUR&currencies=XAU`;
-  console.log(`Fetching gold EUR prices from Metal Price API (${startDate} → ${endDate})...`);
+  const url = `https://fsapi.gold.org/api/goldprice/v11/chart/price/eur/oz/${fromMs},${toMs}`;
+  console.log('Fetching gold EUR/oz from World Gold Council API...');
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Metal Price API HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`WGC API HTTP ${res.status}`);
   const json = await res.json();
-  if (!json.success) throw new Error(`Metal Price API error: ${JSON.stringify(json)}`);
 
-  // Group daily rates by YYYY-MM, compute monthly average gold price
-  // EURXAU = EUR per troy oz (direct price field, no conversion needed)
-  const buckets = {}; // "YYYY-MM" → [goldEurPerOz]
-  for (const [date, rates] of Object.entries(json.rates)) {
-    const price = rates.EURXAU;
-    if (!price) continue;
-    const ym = date.substring(0, 7);
+  // Response shape: { chartData: [[timestampMs, priceEurOz], ...] }
+  const rows = json.chartData ?? json.data ?? json;
+  if (!Array.isArray(rows)) throw new Error(`Unexpected WGC response shape: ${JSON.stringify(json).slice(0, 200)}`);
+
+  // Group by YYYY-MM, compute monthly average
+  const buckets = {};
+  for (const [tsMs, price] of rows) {
+    if (price == null || isNaN(price)) continue;
+    const d  = new Date(tsMs);
+    const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
     if (!buckets[ym]) buckets[ym] = [];
     buckets[ym].push(price);
   }
 
-  const map = {};
+  const goldMap = {};
   for (const [ym, prices] of Object.entries(buckets)) {
-    map[ym] = prices.reduce((a, b) => a + b, 0) / prices.length;
+    goldMap[ym] = prices.reduce((a, b) => a + b, 0) / prices.length;
   }
-  console.log(`Gold EUR: ${Object.keys(map).length} months computed`);
-  return map;
+  console.log(`Gold EUR: ${Object.keys(goldMap).length} months computed`);
+  return goldMap;
 }
 
 // ── Merge ─────────────────────────────────────────────────────────────────────
