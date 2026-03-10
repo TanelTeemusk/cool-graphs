@@ -59,30 +59,42 @@ async function scrapeKvee() {
   }
 }
 
-// ── Gold in EUR from Yahoo Finance (XAUEUR=X) ─────────────────────────────────
+// ── Gold in EUR from Metal Price API ─────────────────────────────────────────
+// Response: { rates: { "YYYY-MM-DD": { XAU: <oz per 1 EUR> } } }
+// Gold price EUR/oz = 1 / XAU rate
 
 async function fetchGoldEur() {
-  const url = 'https://query1.finance.yahoo.com/v8/finance/chart/XAUEUR=X?range=max&interval=1mo';
-  console.log('Fetching gold EUR prices from Yahoo Finance...');
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0' },
-  });
-  if (!res.ok) throw new Error(`Yahoo Finance HTTP ${res.status}`);
-  const json = await res.json();
+  const apiKey = process.env.METAL_API_KEY;
+  if (!apiKey) throw new Error('Missing METAL_API_KEY environment variable');
 
-  const result = json.chart.result[0];
-  const timestamps = result.timestamp;
-  const closes = result.indicators.quote[0].close;
+  const startDate = '2014-01-01';
+  const now = new Date();
+  const endDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+
+  const url = `https://api.metalpriceapi.com/v1/timeframe?api_key=${apiKey}&start_date=${startDate}&end_date=${endDate}&base=EUR&currencies=XAU`;
+  console.log(`Fetching gold EUR prices from Metal Price API (${startDate} → ${endDate})...`);
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Metal Price API HTTP ${res.status}`);
+  const json = await res.json();
+  if (!json.success) throw new Error(`Metal Price API error: ${JSON.stringify(json)}`);
+
+  // Group daily rates by YYYY-MM, compute monthly average gold price
+  // EURXAU = EUR per troy oz (direct price field, no conversion needed)
+  const buckets = {}; // "YYYY-MM" → [goldEurPerOz]
+  for (const [date, rates] of Object.entries(json.rates)) {
+    const price = rates.EURXAU;
+    if (!price) continue;
+    const ym = date.substring(0, 7);
+    if (!buckets[ym]) buckets[ym] = [];
+    buckets[ym].push(price);
+  }
 
   const map = {};
-  for (let i = 0; i < timestamps.length; i++) {
-    const close = closes[i];
-    if (close == null) continue; // skip incomplete current month
-    const d = new Date(timestamps[i] * 1000);
-    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-    map[key] = close;
+  for (const [ym, prices] of Object.entries(buckets)) {
+    map[ym] = prices.reduce((a, b) => a + b, 0) / prices.length;
   }
-  console.log(`Gold EUR: ${Object.keys(map).length} months fetched`);
+  console.log(`Gold EUR: ${Object.keys(map).length} months computed`);
   return map;
 }
 
