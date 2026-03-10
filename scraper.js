@@ -110,11 +110,14 @@ async function fetchEurUsd() {
       .on('error', reject);
   });
 
-  const lines = csvText.trim().split('\n');
+  // Strip BOM if present, normalize line endings
+  const csvClean = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = csvClean.trim().split('\n');
+  console.log('ECB CSV header:', JSON.stringify(lines[0].substring(0, 120)));
   const headers = lines[0].split(',').map((h) => h.trim());
-  const dateIdx = headers.indexOf('Date');
-  const usdIdx = headers.indexOf('USD');
-  if (dateIdx < 0 || usdIdx < 0) throw new Error('ECB CSV missing Date or USD column');
+  const dateIdx = headers.findIndex((h) => h === 'Date');
+  const usdIdx = headers.findIndex((h) => h === 'USD');
+  if (dateIdx < 0 || usdIdx < 0) throw new Error(`ECB CSV missing Date or USD column. Headers: ${JSON.stringify(headers.slice(0, 5))}`);
 
   // Group daily rates by YYYY-MM, compute averages
   const buckets = {}; // "YYYY-MM" → [rates]
