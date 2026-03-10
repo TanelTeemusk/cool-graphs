@@ -30,8 +30,14 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
+          security: strict
           local-dir: ./
-          server-dir: /     # Zone.ee public_html root — adjust if needed
-          include: |
-            tallinn-kesklinn.json
-            index.html
+          server-dir: /
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .claude/**
+            package*.json
+            scraper.js
+            README.md
