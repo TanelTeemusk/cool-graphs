@@ -74,8 +74,8 @@ async function fetchGoldEur() {
   if (!res.ok) throw new Error(`WGC API HTTP ${res.status}`);
   const json = await res.json();
 
-  // Response shape: { chartData: [[timestampMs, priceEurOz], ...] }
-  const rows = json.chartData ?? json.data ?? json;
+  // Response shape: { chartData: { EUR: [[timestampMs, priceEurOz], ...] } }
+  const rows = json?.chartData?.EUR;
   if (!Array.isArray(rows)) throw new Error(`Unexpected WGC response shape: ${JSON.stringify(json).slice(0, 200)}`);
 
   // Group by YYYY-MM, compute monthly average
